@@ -126,6 +126,12 @@ catch
   interfaceError(fname);
 end
 
+% Assign empty values in .ang file as 'notIndexed'
+gridType = readByToken(hl,'# GRID: ');
+if strcmp(gridType,'HexGrid')
+ ebsd=empty2notIndexed(ebsd, hl);
+end
+
 % change reference frame
 if check_option(varargin,'convertSpatial2EulerReferenceFrame')
   ebsd = rotate(ebsd,rotation('axis',xvector+yvector,'angle',180*degree),'keepEuler');
@@ -155,4 +161,69 @@ function value = readByToken(cellStr,token,default)
     value = [];
   end
   
+end
+
+function ebsd_new=empty2notIndexed(ebsd, hl)
+% assign empty values in .ang file as 'notIndexed'
+
+% read spatial parameters from ang file:
+        Xstep = str2num(readByToken(hl,'# XSTEP: '));
+        Ystep = Xstep*sin(pi/3);
+        nColsOdd = str2num(readByToken(hl,'# NCOLS_ODD: '));
+        nColsEven = str2num(readByToken(hl,'# NCOLS_EVEN: '));
+        nRows = str2num(readByToken(hl,'# NROWS: '));
+
+    %x_base=[0,1,2...maxX, 0.5,1.5...maxX-0.5]; X values repeat in this order
+    x_base=[0: Xstep: (nColsOdd-1)*Xstep, (Xstep/2):Xstep: nColsEven*Xstep];
+    x = repmat(x_base',floor(nRows/2),1);
+    if rem(nRows,2)~=0 % odd number of X
+        x=[x;(0: Xstep: (nColsOdd-1)*Xstep)'];
+    end
+    
+    %y_base=[0,0...0, stepSize*sind(60).....maxY]; Y values repeat in this order
+    y_base=(0:Ystep:Ystep*nRows-Ystep)'; %
+    
+    % y=repelem(y_base',nRows/2); % Doesn't work when nColsEven ~= nColsOdd
+    % if there's no better solution, loop:
+    y=[];
+    for ii=1:nRows
+        if mod(ii,2) %odd column
+            y_array = repmat(y_base(ii),nColsOdd,1);
+        else % even column
+            y_array = repmat(y_base(ii),nColsEven,1);
+        end
+        y = [y;y_array];
+    end
+    
+    %concatenate x,y:
+    xy=[x,y];
+
+    %Find the coordinates of empty points
+    tol=1.E-4; % tolerance
+    xy_ang=[ebsd.prop.x,ebsd.prop.y];
+    idEmpty=find(~ismembertol(xy,xy_ang,tol,'ByRows',true));
+    
+    if isempty(idEmpty)
+        ebsd_new=ebsd;
+    else
+        % create ebsd data for notIndexed phase
+        oris= repmat(orientation(nanquaternion), length(idEmpty), 1);
+        phase = -ones(length(idEmpty), 1); 
+        cs = {'notIndexed'};     
+        
+        %Get the same EBSD properties , assign all as 0
+        existingProps=fieldnames(ebsd.prop);
+        for ii=1:length(existingProps)
+            eval(['opt.',existingProps{ii},'=zeros(length(idEmpty),1);']);
+        end
+        opt.x = xy(idEmpty,1); 
+        opt.y = xy(idEmpty,2); 
+        
+        %Create EBSD data
+        ebsd_empty = EBSD(oris,phase,cs,'options',opt); 
+
+        %concatenate ebsd
+        ebsd_new=[ebsd,ebsd_empty];       
+    end
+    
 end
