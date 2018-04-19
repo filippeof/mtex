@@ -44,16 +44,24 @@ end
 
 if length(mtexFig.cBarAxis)==1 && i>1
   pos = get(mtexFig.cBarAxis,'position');
-  
+    
+  if ~isempty(mtexFig.children(end-1).Title.String) % get fontSize
+        fSz=getMTEXpref('FontSize');
+        mF=2; %multiplication factor (innerplotspacing for title and figure)
+    else
+        fSz=0;
+        mF=1;
+  end
+    
   if pos(4)>pos(3) %Vertical bar
     
-    pos(4) = mtexFig.nrows*(mtexFig.axisHeight+mtexFig.innerPlotSpacing)+mtexFig.outerPlotSpacing;
+    pos(4) = mtexFig.nrows*(mtexFig.axisHeight)+ (mtexFig.nrows-1)*(mF*mtexFig.innerPlotSpacing+fSz);
     pos(2) = axisPos(2)+1;
     pos(1) = mtexFig.ncols*(mtexFig.axisWidth+mtexFig.innerPlotSpacing)+mtexFig.outerPlotSpacing+mtexFig.innerPlotSpacing;
 
   else  %Horizontal bar
     
-    pos(3)=mtexFig.ncols*(mtexFig.axisWidth)+mtexFig.innerPlotSpacing; %c_bar width
+    pos(3)=mtexFig.ncols*(mtexFig.axisWidth)+(mtexFig.ncols-2)*mtexFig.innerPlotSpacing; %c_bar width
     pos(2) = axisPos(2)-2*pos(4);
     pos(1)=mtexFig.outerPlotSpacing+mtexFig.innerPlotSpacing; %c_bar left
     
@@ -103,6 +111,4 @@ mtexFig.drawNow
 
 end
 
-
 end
-
