@@ -3,13 +3,13 @@ function [density,omega] = calcAngleDistribution(odf,varargin)
 %
 % Input
 %  odf - @ODF
-%  omega - list of angles
 %
 % Flags
 %  even       - calculate even portion only
 %
 % Output
-%  x   - values of the axis distribution
+%  density - the density normalized such that sum(density)=100
+%  omega - list of angles
 %
 % See also
 
@@ -98,6 +98,7 @@ else
   density = density ./ mean(density) * pi ./ maxangle;
   
 end
+density = 100*density./sum(density);
 
 % where to evaluate
 %omega = linspace(0,maxangle,100);
